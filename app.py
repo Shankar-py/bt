@@ -7,42 +7,47 @@ import numpy as np
 import numpy_financial as npf
 
 # Initialize session state for different sections
-if 'projects' not in st.session_state:
-    st.session_state['projects'] = pd.DataFrame(columns=['Project Name', 'Start Date', 'End Date', 'Budget', 'Spent', 'Status'])
-if 'tasks' not in st.session_state:
-    st.session_state['tasks'] = pd.DataFrame(columns=['Project Name', 'Task', 'Priority', 'Status', 'Start Date', 'End Date'])
-if 'risks' not in st.session_state:
-    st.session_state['risks'] = pd.DataFrame(columns=['Project Name', 'Risk', 'Likelihood', 'Impact', 'Severity', 'Status'])
-if 'budget' not in st.session_state:
-    st.session_state['budget'] = []
-if 'resources' not in st.session_state:
-    st.session_state['resources'] = []
-if 'issues' not in st.session_state:
-    st.session_state['issues'] = []
-if 'milestones' not in st.session_state:
-    st.session_state['milestones'] = []
-if 'charter' not in st.session_state:
-    st.session_state['charter'] = []
-if 'costs' not in st.session_state:
-    st.session_state['costs'] = []
-if 'todos' not in st.session_state:
-    st.session_state['todos'] = []
-if 'portfolio' not in st.session_state:
-    st.session_state['portfolio'] = []
-if 'calendar' not in st.session_state:
-    st.session_state['calendar'] = []
-if 'cost_estimations' not in st.session_state:
-    st.session_state['cost_estimations'] = []
-if 'jd_data' not in st.session_state:
-    st.session_state['jd_data'] = pd.DataFrame(columns=['Project Name', 'Task', 'Description', 'Confirmation', 'Remarks'])
-if 'activities' not in st.session_state:
-    st.session_state['activities'] = {}
-if 'users' not in st.session_state:
-    st.session_state['users'] = {}
-if 'logged_in' not in st.session_state:
-    st.session_state['logged_in'] = False
-if 'current_user' not in st.session_state:
-    st.session_state['current_user'] = None
+def initialize_state():
+    if 'projects' not in st.session_state:
+        st.session_state['projects'] = pd.DataFrame(columns=['Project Name', 'Start Date', 'End Date', 'Budget', 'Spent', 'Status', 'Portfolio', 'Impact on Business', 'Deliverable', 'Timeline'])
+    if 'tasks' not in st.session_state:
+        st.session_state['tasks'] = pd.DataFrame(columns=['Project Name', 'Task', 'Priority', 'Status', 'Start Date', 'End Date'])
+    if 'risks' not in st.session_state:
+        st.session_state['risks'] = pd.DataFrame(columns=['Project Name', 'Risk', 'Likelihood', 'Impact', 'Severity', 'Status'])
+    if 'budget' not in st.session_state:
+        st.session_state['budget'] = []
+    if 'resources' not in st.session_state:
+        st.session_state['resources'] = []
+    if 'issues' not in st.session_state:
+        st.session_state['issues'] = []
+    if 'milestones' not in st.session_state:
+        st.session_state['milestones'] = []
+    if 'charter' not in st.session_state:
+        st.session_state['charter'] = []
+    if 'costs' not in st.session_state:
+        st.session_state['costs'] = []
+    if 'todos' not in st.session_state:
+        st.session_state['todos'] = []
+    if 'portfolio' not in st.session_state:
+        st.session_state['portfolio'] = []
+    if 'calendar' not in st.session_state:
+        st.session_state['calendar'] = []
+    if 'cost_estimations' not in st.session_state:
+        st.session_state['cost_estimations'] = []
+    if 'jd_data' not in st.session_state:
+        st.session_state['jd_data'] = pd.DataFrame(columns=['Project Name', 'Task', 'Description', 'Confirmation', 'Remarks'])
+    if 'activities' not in st.session_state:
+        st.session_state['activities'] = {}
+    if 'training' not in st.session_state:
+        st.session_state['training'] = []
+    if 'users' not in st.session_state:
+        st.session_state['users'] = {}
+    if 'logged_in' not in st.session_state:
+        st.session_state['logged_in'] = False
+    if 'current_user' not in st.session_state:
+        st.session_state['current_user'] = None
+
+initialize_state()
 
 # Set page configuration
 st.set_page_config(page_title="Jay Jay Business Transformation App", layout="wide")
@@ -66,33 +71,44 @@ def login_user(username, password):
 st.sidebar.title("Jay Jay Business Transformation App")
 st.sidebar.markdown("### Navigation")
 
-sections = [
-    "Dashboard",
-    "Project Schedule",
-    "Budget Management",
-    "Resource Tracking",
-    "Issue Management",
-    "Project Milestones",
-    "Project Charter",
-    "Risk Management",
-    "Cost Management",
-    "To-Do List",
-    "Portfolio Tracking",
-    "Project Calendar",
-    "Task Management",
-    "Gantt Chart",
-    "Cost Estimation",
-    "Reporting",
-    "ROI Calculation",
-    "Make Presentation",
-    "Job Description"
-]
+categories = {
+    "Project Initiation": [
+        "Dashboard",
+        "Project Charter",
+        "Project Milestones",
+        "Portfolio Tracking"
+    ],
+    "Project Planning": [
+        "Project Schedule",
+        "Task Management",
+        "Resource Tracking",
+        "Risk Management"
+    ],
+    "Budgeting and Costing": [
+        "Budget Management",
+        "Cost Management",
+        "Cost Estimation",
+        "ROI Calculation"
+    ],
+    "Change Management": [
+        "Issue Management",
+        "To-Do List",
+        "Project Calendar",
+        "Reporting",
+        "Training and Development",
+        "Visualizations"
+    ]
+}
 
-selected_section = st.sidebar.radio("Select a section:", sections)
+selected_category = st.sidebar.selectbox("Select a category:", list(categories.keys()))
+
+if selected_category:
+    options = categories[selected_category]
+    selected_section = st.sidebar.radio("Select a section:", options)
 
 # Theme and background color selection
 theme = st.sidebar.selectbox("Select Theme", ["Light", "Dark"])
-background_color = st.sidebar.color_picker("Pick a Background Color", "#ffffff")
+background_color = st.sidebar.color_picker("Pick a Background Color", "#36523c")
 form_color = st.sidebar.color_picker("Pick a Form Background Color", "#C5943A")
 font_color = st.sidebar.color_picker("Pick a Font Color", "#000000")
 title_font_color = st.sidebar.color_picker("Pick a Title Font Color", "#000000")
@@ -145,6 +161,10 @@ def dashboard():
         budget = st.number_input("Budget", min_value=0)
         spent = st.number_input("Spent", min_value=0)
         status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"])
+        portfolio = st.selectbox("Portfolio", ["Turnaround project", "Special project", "Digitisation and automation"])
+        impact = st.number_input("Impact on Business", min_value=0)
+        deliverable = st.text_input("Deliverable")
+        timeline = st.text_input("Timeline")
         submitted = st.form_submit_button("Add Project")
         if submitted:
             new_project = pd.DataFrame({
@@ -153,7 +173,11 @@ def dashboard():
                 'End Date': [end_date],
                 'Budget': [budget],
                 'Spent': [spent],
-                'Status': [status]
+                'Status': [status],
+                'Portfolio': [portfolio],
+                'Impact on Business': [impact],
+                'Deliverable': [deliverable],
+                'Timeline': [timeline]
             })
             st.session_state['projects'] = pd.concat([st.session_state['projects'], new_project], ignore_index=True)
             st.success(f"Project added successfully! Project Name: {project_name}")
@@ -422,7 +446,7 @@ def risk_management():
         status = st.selectbox("Status", ["Open", "Mitigated", "Closed"])
         submitted = st.form_submit_button("Add Risk")
         if submitted:
-            st.session_state['risks'].append({'Project Name': selected_project_name, 'Risk': risk, 'Likelihood': likelihood, 'Impact': impact, 'Severity': severity, 'Status': status})
+            st.session_state['risks'] = st.session_state['risks'].append({'Project Name': selected_project_name, 'Risk': risk, 'Likelihood': likelihood, 'Impact': impact, 'Severity': severity, 'Status': status}, ignore_index=True)
             st.success("Risk added successfully!")
 
     risk_df = pd.DataFrame(st.session_state['risks'])
@@ -519,24 +543,12 @@ def todo_list():
 def portfolio_tracking():
     st.title("Portfolio Tracking")
 
-    project_names = st.session_state['projects']['Project Name'].tolist()
-    selected_project_name = st.selectbox("Select Project Name", project_names)
-    
-    with st.form("add_portfolio_form"):
-        st.subheader("Add New Portfolio Entry")
-        project_name = st.text_input("Project Name")
-        status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"])
-        submitted = st.form_submit_button("Add Portfolio Entry")
-        if submitted:
-            st.session_state['portfolio'].append({'Project Name': selected_project_name, 'Project Name': project_name, 'Status': status})
-            st.success("Portfolio entry added successfully!")
-
-    portfolio_df = pd.DataFrame(st.session_state['portfolio'])
+    portfolio_df = st.session_state['projects']
     if not portfolio_df.empty:
-        fig_portfolio = px.pie(portfolio_df, names='Status', title="Portfolio Status Distribution")
+        fig_portfolio = px.pie(portfolio_df, names='Portfolio', title="Portfolio Distribution")
         st.plotly_chart(fig_portfolio, use_container_width=True)
 
-        fig_portfolio_timeline = px.timeline(portfolio_df, x_start="Status", x_end="Status", y="Project Name", color="Status", title="Project Portfolio Timeline")
+        fig_portfolio_timeline = px.timeline(portfolio_df, x_start="Start Date", x_end="End Date", y="Project Name", color="Portfolio", title="Project Portfolio Timeline")
         st.plotly_chart(fig_portfolio_timeline, use_container_width=True)
 
         st.subheader("Portfolio Data")
@@ -938,46 +950,101 @@ def job_description():
         fig_confirmation = px.pie(task_df, names='Confirmation', title="Task Confirmation Status")
         st.plotly_chart(fig_confirmation, use_container_width=True)
 
+# Functions for additional sections
+def training_and_development():
+    st.title("Training and Development")
+
+    with st.form("add_training_form"):
+        st.subheader("Add New Training Program")
+        program_name = st.text_input("Program Name")
+        trainer = st.text_input("Trainer")
+        start_date = st.date_input("Start Date")
+        end_date = st.date_input("End Date")
+        status = st.selectbox("Status", ["Planned", "In Progress", "Completed"])
+        submitted = st.form_submit_button("Add Training Program")
+        if submitted:
+            st.session_state['training'].append({'Program Name': program_name, 'Trainer': trainer, 'Start Date': start_date, 'End Date': end_date, 'Status': status})
+            st.success("Training program added successfully!")
+
+    training_df = pd.DataFrame(st.session_state['training'])
+    if not training_df.empty:
+        st.subheader("Training Programs Data")
+        st.dataframe(training_df)
+
+        fig_training = px.bar(training_df, x='Program Name', y='Status', color='Status', title="Training Programs Status")
+        st.plotly_chart(fig_training, use_container_width=True)
+        st.download_button(
+            label="Download Training Data",
+            data=training_df.to_csv(index=False),
+            file_name="training_data.csv",
+            mime="text/csv"
+        )
+    else:
+        st.info("No training programs to display. Please add a training program.")
+
+def visualizations():
+    st.title("Visualizations")
+
+    project_df = st.session_state['projects']
+    if not project_df.empty:
+        project_df['Start Date'] = pd.to_datetime(project_df['Start Date'])
+        project_df['End Date'] = pd.to_datetime(project_df['End Date'])
+
+        fig_project_status = px.timeline(project_df, x_start="Start Date", x_end="End Date", y="Project Name", color="Status", title="Project Timelines and Status")
+        st.plotly_chart(fig_project_status, use_container_width=True)
+
+        fig_budget_vs_spent = px.bar(project_df, x='Project Name', y=['Budget', 'Spent'], barmode='group', title="Budget vs Spent")
+        st.plotly_chart(fig_budget_vs_spent, use_container_width=True)
+
+        fig_pie = px.pie(project_df, names='Status', title="Project Status Distribution")
+        st.plotly_chart(fig_pie, use_container_width=True)
+
+        fig_scatter = px.scatter(project_df, x='Budget', y='Spent', color='Status', size='Spent', title="Budget vs Spent by Status")
+        st.plotly_chart(fig_scatter, use_container_width=True)
+
+    else:
+        st.info("No projects to display. Please add a project.")
+
 # Render the selected section
 if 'logged_in' in st.session_state and st.session_state['logged_in']:
     if selected_section == "Dashboard":
         dashboard()
-    elif selected_section == "Project Schedule":
-        project_schedule()
-    elif selected_section == "Budget Management":
-        budget_management()
-    elif selected_section == "Resource Tracking":
-        resource_tracking()
-    elif selected_section == "Issue Management":
-        issue_management()
-    elif selected_section == "Project Milestones":
-        project_milestones()
     elif selected_section == "Project Charter":
         project_charter()
-    elif selected_section == "Risk Management":
-        risk_management()
-    elif selected_section == "Cost Management":
-        cost_management()
-    elif selected_section == "To-Do List":
-        todo_list()
+    elif selected_section == "Project Milestones":
+        project_milestones()
     elif selected_section == "Portfolio Tracking":
         portfolio_tracking()
-    elif selected_section == "Project Calendar":
-        project_calendar()
+    elif selected_section == "Project Schedule":
+        project_schedule()
     elif selected_section == "Task Management":
         task_management()
-    elif selected_section == "Gantt Chart":
-        gantt_chart()
+    elif selected_section == "Resource Tracking":
+        resource_tracking()
+    elif selected_section == "Risk Management":
+        risk_management()
+    elif selected_section == "Budget Management":
+        budget_management()
+    elif selected_section == "Cost Management":
+        cost_management()
     elif selected_section == "Cost Estimation":
         cost_estimation()
-    elif selected_section == "Reporting":
-        reporting()
     elif selected_section == "ROI Calculation":
         roi_calculation()
-    elif selected_section == "Make Presentation":
-        make_presentation()
-    elif selected_section == "Job Description":
-        job_description()
+    elif selected_section == "Issue Management":
+        issue_management()
+    elif selected_section == "To-Do List":
+        todo_list()
+    elif selected_section == "Project Calendar":
+        project_calendar()
+    elif selected_section == "Reporting":
+        reporting()
+    elif selected_section == "Training and Development":
+        training_and_development()
+    elif selected_section == "Visualizations":
+        visualizations()
+    elif selected_section == "Gantt Chart":
+        gantt_chart()
 else:
     st.write("Please log in to access the app.")
 
