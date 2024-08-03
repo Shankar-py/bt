@@ -5,43 +5,139 @@ import plotly.graph_objects as go
 from fpdf import FPDF
 import numpy as np
 import numpy_financial as npf
+from sqlalchemy import create_engine, Column, Integer, String, Float, Date, MetaData, Table
+from sqlalchemy.orm import sessionmaker
 
-# Initialize session state for different sections
+# Initialize database connection
+DATABASE_URL = "sqlite:///jayjay_bt_app.db"
+engine = create_engine(DATABASE_URL)
+metadata = MetaData()
+Session = sessionmaker(bind=engine)
+session = Session()
+
+# Define table structure
+projects_table = Table(
+    'projects', metadata,
+    Column('id', Integer, primary_key=True),
+    Column('name', String),
+    Column('start_date', Date),
+    Column('end_date', Date),
+    Column('budget', Float),
+    Column('spent', Float),
+    Column('status', String),
+    Column('portfolio', String),
+    Column('impact', Float),
+    Column('deliverable', String),
+    Column('timeline', String)
+)
+tasks_table = Table(
+    'tasks', metadata,
+    Column('id', Integer, primary_key=True),
+    Column('project_name', String),
+    Column('task', String),
+    Column('priority', String),
+    Column('status', String),
+    Column('start_date', Date),
+    Column('end_date', Date)
+)
+risks_table = Table(
+    'risks', metadata,
+    Column('id', Integer, primary_key=True),
+    Column('project_name', String),
+    Column('risk', String),
+    Column('likelihood', Float),
+    Column('impact', Float),
+    Column('severity', Float),
+    Column('status', String)
+)
+budget_table = Table(
+    'budget', metadata,
+    Column('id', Integer, primary_key=True),
+    Column('project_name', String),
+    Column('category', String),
+    Column('allocated', Float),
+    Column('spent', Float)
+)
+resources_table = Table(
+    'resources', metadata,
+    Column('id', Integer, primary_key=True),
+    Column('project_name', String),
+    Column('resource_name', String),
+    Column('allocation', Float)
+)
+issues_table = Table(
+    'issues', metadata,
+    Column('id', Integer, primary_key=True),
+    Column('project_name', String),
+    Column('description', String),
+    Column('priority', String),
+    Column('status', String)
+)
+milestones_table = Table(
+    'milestones', metadata,
+    Column('id', Integer, primary_key=True),
+    Column('project_name', String),
+    Column('milestone', String),
+    Column('due_date', Date),
+    Column('status', String)
+)
+charter_table = Table(
+    'charter', metadata,
+    Column('id', Integer, primary_key=True),
+    Column('project_name', String),
+    Column('objective', String),
+    Column('scope', String),
+    Column('stakeholders', String)
+)
+costs_table = Table(
+    'costs', metadata,
+    Column('id', Integer, primary_key=True),
+    Column('project_name', String),
+    Column('category', String),
+    Column('planned_cost', Float),
+    Column('actual_cost', Float),
+    Column('status', String)
+)
+todos_table = Table(
+    'todos', metadata,
+    Column('id', Integer, primary_key=True),
+    Column('project_name', String),
+    Column('task', String),
+    Column('priority', String),
+    Column('status', String),
+    Column('due_date', Date)
+)
+portfolio_table = Table(
+    'portfolio', metadata,
+    Column('id', Integer, primary_key=True),
+    Column('project_name', String),
+    Column('portfolio_type', String)
+)
+calendar_table = Table(
+    'calendar', metadata,
+    Column('id', Integer, primary_key=True),
+    Column('project_name', String),
+    Column('event_name', String),
+    Column('event_date', Date)
+)
+cost_estimations_table = Table(
+    'cost_estimations', metadata,
+    Column('id', Integer, primary_key=True),
+    Column('project_name', String),
+    Column('item', String),
+    Column('estimated_cost', Float)
+)
+users_table = Table(
+    'users', metadata,
+    Column('id', Integer, primary_key=True),
+    Column('username', String, unique=True),
+    Column('password', String)
+)
+
+metadata.create_all(engine)
+
+# Initialize session state
 def initialize_state():
-    if 'projects' not in st.session_state:
-        st.session_state['projects'] = pd.DataFrame(columns=['Project Name', 'Start Date', 'End Date', 'Budget', 'Spent', 'Status', 'Portfolio', 'Impact on Business', 'Deliverable', 'Timeline'])
-    if 'tasks' not in st.session_state:
-        st.session_state['tasks'] = pd.DataFrame(columns=['Project Name', 'Task', 'Priority', 'Status', 'Start Date', 'End Date'])
-    if 'risks' not in st.session_state:
-        st.session_state['risks'] = pd.DataFrame(columns=['Project Name', 'Risk', 'Likelihood', 'Impact', 'Severity', 'Status'])
-    if 'budget' not in st.session_state:
-        st.session_state['budget'] = []
-    if 'resources' not in st.session_state:
-        st.session_state['resources'] = []
-    if 'issues' not in st.session_state:
-        st.session_state['issues'] = []
-    if 'milestones' not in st.session_state:
-        st.session_state['milestones'] = []
-    if 'charter' not in st.session_state:
-        st.session_state['charter'] = []
-    if 'costs' not in st.session_state:
-        st.session_state['costs'] = []
-    if 'todos' not in st.session_state:
-        st.session_state['todos'] = []
-    if 'portfolio' not in st.session_state:
-        st.session_state['portfolio'] = []
-    if 'calendar' not in st.session_state:
-        st.session_state['calendar'] = []
-    if 'cost_estimations' not in st.session_state:
-        st.session_state['cost_estimations'] = []
-    if 'jd_data' not in st.session_state:
-        st.session_state['jd_data'] = pd.DataFrame(columns=['Project Name', 'Task', 'Description', 'Confirmation', 'Remarks'])
-    if 'activities' not in st.session_state:
-        st.session_state['activities'] = {}
-    if 'training' not in st.session_state:
-        st.session_state['training'] = []
-    if 'users' not in st.session_state:
-        st.session_state['users'] = {}
     if 'logged_in' not in st.session_state:
         st.session_state['logged_in'] = False
     if 'current_user' not in st.session_state:
@@ -54,14 +150,16 @@ st.set_page_config(page_title="Jay Jay Business Transformation App", layout="wid
 
 # Function to handle user registration
 def register_user(username, password):
-    if username in st.session_state['users']:
+    if session.execute(users_table.select().where(users_table.c.username == username)).fetchone():
         return False, "Username already exists!"
-    st.session_state['users'][username] = password
+    session.execute(users_table.insert().values(username=username, password=password))
+    session.commit()
     return True, "User registered successfully!"
 
 # Function to handle user login
 def login_user(username, password):
-    if username in st.session_state['users'] and st.session_state['users'][username] == password:
+    user = session.execute(users_table.select().where(users_table.c.username == username).where(users_table.c.password == password)).fetchone()
+    if user:
         st.session_state['logged_in'] = True
         st.session_state['current_user'] = username
         return True, "Login successful!"
@@ -167,22 +265,24 @@ def dashboard():
         timeline = st.text_input("Timeline")
         submitted = st.form_submit_button("Add Project")
         if submitted:
-            new_project = pd.DataFrame({
-                'Project Name': [project_name],
-                'Start Date': [start_date],
-                'End Date': [end_date],
-                'Budget': [budget],
-                'Spent': [spent],
-                'Status': [status],
-                'Portfolio': [portfolio],
-                'Impact on Business': [impact],
-                'Deliverable': [deliverable],
-                'Timeline': [timeline]
-            })
-            st.session_state['projects'] = pd.concat([st.session_state['projects'], new_project], ignore_index=True)
+            new_project = {
+                'name': project_name,
+                'start_date': start_date,
+                'end_date': end_date,
+                'budget': budget,
+                'spent': spent,
+                'status': status,
+                'portfolio': portfolio,
+                'impact': impact,
+                'deliverable': deliverable,
+                'timeline': timeline
+            }
+            session.execute(projects_table.insert().values(new_project))
+            session.commit()
             st.success(f"Project added successfully! Project Name: {project_name}")
 
-    project_df = st.session_state['projects']
+    projects = session.execute(projects_table.select()).fetchall()
+    project_df = pd.DataFrame(projects, columns=['id', 'Project Name', 'Start Date', 'End Date', 'Budget', 'Spent', 'Status', 'Portfolio', 'Impact on Business', 'Deliverable', 'Timeline'])
     
     if not project_df.empty:
         project_df['Start Date'] = pd.to_datetime(project_df['Start Date'])
@@ -209,7 +309,7 @@ def dashboard():
 def project_schedule():
     st.title("Project Schedule: Monthly Activity Planning")
 
-    project_names = st.session_state['projects']['Project Name'].tolist()
+    project_names = [project[1] for project in session.execute(projects_table.select()).fetchall()]
     selected_project_name = st.selectbox("Select Project Name", project_names)
     
     with st.form("add_activity_form"):
@@ -218,13 +318,19 @@ def project_schedule():
         num_activities = st.number_input("Number of Activities", min_value=0)
         submitted = st.form_submit_button("Add Activity")
         if submitted:
-            if selected_project_name not in st.session_state['activities']:
-                st.session_state['activities'][selected_project_name] = {}
-            st.session_state['activities'][selected_project_name][month] = num_activities
+            activities = session.execute(f"SELECT activities FROM projects WHERE name='{selected_project_name}'").fetchone()[0]
+            if not activities:
+                activities = {}
+            if selected_project_name not in activities:
+                activities[selected_project_name] = {}
+            activities[selected_project_name][month] = num_activities
+            session.execute(projects_table.update().where(projects_table.c.name == selected_project_name).values(activities=activities))
+            session.commit()
             st.success("Activity added successfully!")
 
-    if selected_project_name in st.session_state['activities']:
-        activities_df = pd.DataFrame(list(st.session_state['activities'][selected_project_name].items()), columns=['Month', 'Number of Activities'])
+    activities = session.execute(f"SELECT activities FROM projects WHERE name='{selected_project_name}'").fetchone()[0]
+    if activities and selected_project_name in activities:
+        activities_df = pd.DataFrame(list(activities[selected_project_name].items()), columns=['Month', 'Number of Activities'])
         fig_activities = px.bar(activities_df, x='Month', y='Number of Activities', title="Monthly Activities")
         st.plotly_chart(fig_activities, use_container_width=True)
     else:
@@ -233,7 +339,7 @@ def project_schedule():
 def budget_management():
     st.title("Budget Management")
 
-    project_names = st.session_state['projects']['Project Name'].tolist()
+    project_names = [project[1] for project in session.execute(projects_table.select()).fetchall()]
     selected_project_name = st.selectbox("Select Project Name", project_names)
     
     with st.form("add_budget_form"):
@@ -243,39 +349,43 @@ def budget_management():
         spent = st.number_input("Spent Budget", min_value=0)
         submitted = st.form_submit_button("Add Budget Entry")
         if submitted:
-            st.session_state['budget'].append({'Project Name': selected_project_name, 'Category': category, 'Allocated': allocated, 'Spent': spent})
+            new_budget = {
+                'project_name': selected_project_name,
+                'category': category,
+                'allocated': allocated,
+                'spent': spent
+            }
+            session.execute(budget_table.insert().values(new_budget))
+            session.commit()
             st.success("Budget entry added successfully!")
 
-    if st.session_state['budget']:
-        budget_df = pd.DataFrame(st.session_state['budget'])
-        budget_df = budget_df[budget_df['Project Name'] == selected_project_name]
-        if not budget_df.empty:
-            fig_budget = px.bar(budget_df, x='Category', y=['Allocated', 'Spent'], barmode='group', title="Budget Allocation and Spending")
-            st.plotly_chart(fig_budget, use_container_width=True)
+    budgets = session.execute(budget_table.select().where(budget_table.c.project_name == selected_project_name)).fetchall()
+    budget_df = pd.DataFrame(budgets, columns=['id', 'Project Name', 'Category', 'Allocated', 'Spent'])
+    if not budget_df.empty:
+        fig_budget = px.bar(budget_df, x='Category', y=['Allocated', 'Spent'], barmode='group', title="Budget Allocation and Spending")
+        st.plotly_chart(fig_budget, use_container_width=True)
 
-            fig_pie_budget = px.pie(budget_df, names='Category', values='Allocated', title="Budget Allocation by Category")
-            st.plotly_chart(fig_pie_budget, use_container_width=True)
+        fig_pie_budget = px.pie(budget_df, names='Category', values='Allocated', title="Budget Allocation by Category")
+        st.plotly_chart(fig_pie_budget, use_container_width=True)
 
-            fig_budget_sunburst = px.sunburst(budget_df, path=['Category'], values='Spent', title="Spent Budget Sunburst")
-            st.plotly_chart(fig_budget_sunburst, use_container_width=True)
+        fig_budget_sunburst = px.sunburst(budget_df, path=['Category'], values='Spent', title="Spent Budget Sunburst")
+        st.plotly_chart(fig_budget_sunburst, use_container_width=True)
 
-            st.subheader("Budget Data")
-            st.dataframe(budget_df)
-            st.download_button(
-                label="Download Budget Data",
-                data=budget_df.to_csv(index=False),
-                file_name="budget_data.csv",
-                mime="text/csv"
-            )
-        else:
-            st.info("No budget data to display for this project. Please add a budget entry.")
+        st.subheader("Budget Data")
+        st.dataframe(budget_df)
+        st.download_button(
+            label="Download Budget Data",
+            data=budget_df.to_csv(index=False),
+            file_name="budget_data.csv",
+            mime="text/csv"
+        )
     else:
-        st.info("No budget data to display. Please add a budget entry.")
+        st.info("No budget data to display for this project. Please add a budget entry.")
 
 def resource_tracking():
     st.title("Resource Tracking")
 
-    project_names = st.session_state['projects']['Project Name'].tolist()
+    project_names = [project[1] for project in session.execute(projects_table.select()).fetchall()]
     selected_project_name = st.selectbox("Select Project Name", project_names)
     
     with st.form("add_resource_form"):
@@ -284,40 +394,43 @@ def resource_tracking():
         allocation = st.number_input("Allocation Percentage", min_value=0, max_value=100)
         submitted = st.form_submit_button("Add Resource")
         if submitted:
-            st.session_state['resources'].append({'Project Name': selected_project_name, 'Resource': resource_name, 'Allocation': allocation})
+            new_resource = {
+                'project_name': selected_project_name,
+                'resource_name': resource_name,
+                'allocation': allocation
+            }
+            session.execute(resources_table.insert().values(new_resource))
+            session.commit()
             st.success("Resource added successfully!")
 
-    if st.session_state['resources']:
-        resources_df = pd.DataFrame(st.session_state['resources'])
-        resources_df = resources_df[resources_df['Project Name'] == selected_project_name]
-        if not resources_df.empty:
-            fig_resources = px.pie(resources_df, names='Resource', values='Allocation', title="Resource Allocation")
-            st.plotly_chart(fig_resources, use_container_width=True)
+    resources = session.execute(resources_table.select().where(resources_table.c.project_name == selected_project_name)).fetchall()
+    resources_df = pd.DataFrame(resources, columns=['id', 'Project Name', 'Resource Name', 'Allocation'])
+    if not resources_df.empty:
+        fig_resources = px.pie(resources_df, names='Resource Name', values='Allocation', title="Resource Allocation")
+        st.plotly_chart(fig_resources, use_container_width=True)
 
-            fig_bar_resources = px.bar(resources_df, x='Resource', y='Allocation', title="Resource Allocation Percentage")
-            st.plotly_chart(fig_bar_resources, use_container_width=True)
+        fig_bar_resources = px.bar(resources_df, x='Resource Name', y='Allocation', title="Resource Allocation Percentage")
+        st.plotly_chart(fig_bar_resources, use_container_width=True)
 
-            fig_donut_resources = go.Figure(data=[go.Pie(labels=resources_df['Resource'], values=resources_df['Allocation'], hole=.3)])
-            fig_donut_resources.update_layout(title_text="Resource Allocation Donut Chart")
-            st.plotly_chart(fig_donut_resources, use_container_width=True)
+        fig_donut_resources = go.Figure(data=[go.Pie(labels=resources_df['Resource Name'], values=resources_df['Allocation'], hole=.3)])
+        fig_donut_resources.update_layout(title_text="Resource Allocation Donut Chart")
+        st.plotly_chart(fig_donut_resources, use_container_width=True)
 
-            st.subheader("Resource Data")
-            st.dataframe(resources_df)
-            st.download_button(
-                label="Download Resource Data",
-                data=resources_df.to_csv(index=False),
-                file_name="resource_data.csv",
-                mime="text/csv"
-            )
-        else:
-            st.info("No resources to display for this project. Please add a resource.")
+        st.subheader("Resource Data")
+        st.dataframe(resources_df)
+        st.download_button(
+            label="Download Resource Data",
+            data=resources_df.to_csv(index=False),
+            file_name="resource_data.csv",
+            mime="text/csv"
+        )
     else:
-        st.info("No resources to display. Please add a resource.")
+        st.info("No resources to display for this project. Please add a resource.")
 
 def issue_management():
     st.title("Issue Management")
 
-    project_names = st.session_state['projects']['Project Name'].tolist()
+    project_names = [project[1] for project in session.execute(projects_table.select()).fetchall()]
     selected_project_name = st.selectbox("Select Project Name", project_names)
     
     with st.form("add_issue_form"):
@@ -327,39 +440,43 @@ def issue_management():
         status = st.selectbox("Status", ["Open", "Closed"])
         submitted = st.form_submit_button("Add Issue")
         if submitted:
-            st.session_state['issues'].append({'Project Name': selected_project_name, 'Description': issue_description, 'Priority': priority, 'Status': status})
+            new_issue = {
+                'project_name': selected_project_name,
+                'description': issue_description,
+                'priority': priority,
+                'status': status
+            }
+            session.execute(issues_table.insert().values(new_issue))
+            session.commit()
             st.success("Issue added successfully!")
 
-    if st.session_state['issues']:
-        issues_df = pd.DataFrame(st.session_state['issues'])
-        issues_df = issues_df[issues_df['Project Name'] == selected_project_name]
-        if not issues_df.empty:
-            fig_issues = px.bar(issues_df, x='Priority', y='Description', color='Status', title="Issues by Priority and Status")
-            st.plotly_chart(fig_issues, use_container_width=True)
+    issues = session.execute(issues_table.select().where(issues_table.c.project_name == selected_project_name)).fetchall()
+    issues_df = pd.DataFrame(issues, columns=['id', 'Project Name', 'Description', 'Priority', 'Status'])
+    if not issues_df.empty:
+        fig_issues = px.bar(issues_df, x='Priority', y='Description', color='Status', title="Issues by Priority and Status")
+        st.plotly_chart(fig_issues, use_container_width=True)
 
-            fig_pie_issues = px.pie(issues_df, names='Priority', title="Issues Distribution by Priority")
-            st.plotly_chart(fig_pie_issues, use_container_width=True)
+        fig_pie_issues = px.pie(issues_df, names='Priority', title="Issues Distribution by Priority")
+        st.plotly_chart(fig_pie_issues, use_container_width=True)
 
-            fig_sunburst_issues = px.sunburst(issues_df, path=['Priority', 'Status'], title="Issues Sunburst Chart")
-            st.plotly_chart(fig_sunburst_issues, use_container_width=True)
+        fig_sunburst_issues = px.sunburst(issues_df, path=['Priority', 'Status'], title="Issues Sunburst Chart")
+        st.plotly_chart(fig_sunburst_issues, use_container_width=True)
 
-            st.subheader("Issue Data")
-            st.dataframe(issues_df)
-            st.download_button(
-                label="Download Issue Data",
-                data=issues_df.to_csv(index=False),
-                file_name="issue_data.csv",
-                mime="text/csv"
-            )
-        else:
-            st.info("No issues to display for this project. Please add an issue.")
+        st.subheader("Issue Data")
+        st.dataframe(issues_df)
+        st.download_button(
+            label="Download Issue Data",
+            data=issues_df.to_csv(index=False),
+            file_name="issue_data.csv",
+            mime="text/csv"
+        )
     else:
-        st.info("No issues to display. Please add an issue.")
+        st.info("No issues to display for this project. Please add an issue.")
 
 def project_milestones():
     st.title("Project Milestones")
 
-    project_names = st.session_state['projects']['Project Name'].tolist()
+    project_names = [project[1] for project in session.execute(projects_table.select()).fetchall()]
     selected_project_name = st.selectbox("Select Project Name", project_names)
     
     with st.form("add_milestone_form"):
@@ -369,36 +486,40 @@ def project_milestones():
         status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"])
         submitted = st.form_submit_button("Add Milestone")
         if submitted:
-            st.session_state['milestones'].append({'Project Name': selected_project_name, 'Milestone': milestone, 'Due Date': due_date, 'Status': status})
+            new_milestone = {
+                'project_name': selected_project_name,
+                'milestone': milestone,
+                'due_date': due_date,
+                'status': status
+            }
+            session.execute(milestones_table.insert().values(new_milestone))
+            session.commit()
             st.success("Milestone added successfully!")
 
-    if st.session_state['milestones']:
-        milestones_df = pd.DataFrame(st.session_state['milestones'])
-        milestones_df = milestones_df[milestones_df['Project Name'] == selected_project_name]
-        if not milestones_df.empty:
-            fig_milestones = px.timeline(milestones_df, x_start="Due Date", x_end="Due Date", y="Milestone", color="Status", title="Project Milestones")
-            st.plotly_chart(fig_milestones, use_container_width=True)
+    milestones = session.execute(milestones_table.select().where(milestones_table.c.project_name == selected_project_name)).fetchall()
+    milestones_df = pd.DataFrame(milestones, columns=['id', 'Project Name', 'Milestone', 'Due Date', 'Status'])
+    if not milestones_df.empty:
+        fig_milestones = px.timeline(milestones_df, x_start="Due Date", x_end="Due Date", y="Milestone", color="Status", title="Project Milestones")
+        st.plotly_chart(fig_milestones, use_container_width=True)
 
-            fig_pie_milestones = px.pie(milestones_df, names='Status', title="Milestone Status Distribution")
-            st.plotly_chart(fig_pie_milestones, use_container_width=True)
+        fig_pie_milestones = px.pie(milestones_df, names='Status', title="Milestone Status Distribution")
+        st.plotly_chart(fig_pie_milestones, use_container_width=True)
 
-            st.subheader("Milestone Data")
-            st.dataframe(milestones_df)
-            st.download_button(
-                label="Download Milestone Data",
-                data=milestones_df.to_csv(index=False),
-                file_name="milestone_data.csv",
-                mime="text/csv"
-            )
-        else:
-            st.info("No milestones to display for this project. Please add a milestone.")
+        st.subheader("Milestone Data")
+        st.dataframe(milestones_df)
+        st.download_button(
+            label="Download Milestone Data",
+            data=milestones_df.to_csv(index=False),
+            file_name="milestone_data.csv",
+            mime="text/csv"
+        )
     else:
-        st.info("No milestones to display. Please add a milestone.")
+        st.info("No milestones to display for this project. Please add a milestone.")
 
 def project_charter():
     st.title("Project Charter")
 
-    project_names = st.session_state['projects']['Project Name'].tolist()
+    project_names = [project[1] for project in session.execute(projects_table.select()).fetchall()]
     selected_project_name = st.selectbox("Select Project Name", project_names)
     
     with st.form("add_charter_form"):
@@ -408,33 +529,37 @@ def project_charter():
         stakeholders = st.text_area("Stakeholders")
         submitted = st.form_submit_button("Add Charter Entry")
         if submitted:
-            st.session_state['charter'].append({'Project Name': selected_project_name, 'Objective': objective, 'Scope': scope, 'Stakeholders': stakeholders})
+            new_charter = {
+                'project_name': selected_project_name,
+                'objective': objective,
+                'scope': scope,
+                'stakeholders': stakeholders
+            }
+            session.execute(charter_table.insert().values(new_charter))
+            session.commit()
             st.success("Charter entry added successfully!")
 
-    if st.session_state['charter']:
-        charter_df = pd.DataFrame(st.session_state['charter'])
-        charter_df = charter_df[charter_df['Project Name'] == selected_project_name]
-        if not charter_df.empty:
-            st.subheader("Project Charter Data")
-            st.dataframe(charter_df)
+    charters = session.execute(charter_table.select().where(charter_table.c.project_name == selected_project_name)).fetchall()
+    charter_df = pd.DataFrame(charters, columns=['id', 'Project Name', 'Objective', 'Scope', 'Stakeholders'])
+    if not charter_df.empty:
+        st.subheader("Project Charter Data")
+        st.dataframe(charter_df)
 
-            fig_sunburst_charter = px.sunburst(charter_df, path=['Objective', 'Scope'], title="Project Charter Sunburst Chart")
-            st.plotly_chart(fig_sunburst_charter, use_container_width=True)
-            st.download_button(
-                label="Download Charter Data",
-                data=charter_df.to_csv(index=False),
-                file_name="charter_data.csv",
-                mime="text/csv"
-            )
-        else:
-            st.info("No charter entries to display for this project. Please add a charter entry.")
+        fig_sunburst_charter = px.sunburst(charter_df, path=['Objective', 'Scope'], title="Project Charter Sunburst Chart")
+        st.plotly_chart(fig_sunburst_charter, use_container_width=True)
+        st.download_button(
+            label="Download Charter Data",
+            data=charter_df.to_csv(index=False),
+            file_name="charter_data.csv",
+            mime="text/csv"
+        )
     else:
-        st.info("No charter entries to display. Please add a charter entry.")
+        st.info("No charter entries to display for this project. Please add a charter entry.")
 
 def risk_management():
     st.title("Risk Management")
 
-    project_names = st.session_state['projects']['Project Name'].tolist()
+    project_names = [project[1] for project in session.execute(projects_table.select()).fetchall()]
     selected_project_name = st.selectbox("Select Project Name", project_names)
     
     with st.form("add_risk_form"):
@@ -446,11 +571,20 @@ def risk_management():
         status = st.selectbox("Status", ["Open", "Mitigated", "Closed"])
         submitted = st.form_submit_button("Add Risk")
         if submitted:
-            st.session_state['risks'] = st.session_state['risks'].append({'Project Name': selected_project_name, 'Risk': risk, 'Likelihood': likelihood, 'Impact': impact, 'Severity': severity, 'Status': status}, ignore_index=True)
+            new_risk = {
+                'project_name': selected_project_name,
+                'risk': risk,
+                'likelihood': likelihood,
+                'impact': impact,
+                'severity': severity,
+                'status': status
+            }
+            session.execute(risks_table.insert().values(new_risk))
+            session.commit()
             st.success("Risk added successfully!")
 
-    risk_df = pd.DataFrame(st.session_state['risks'])
-    risk_df = risk_df[risk_df['Project Name'] == selected_project_name]
+    risks = session.execute(risks_table.select().where(risks_table.c.project_name == selected_project_name)).fetchall()
+    risk_df = pd.DataFrame(risks, columns=['id', 'Project Name', 'Risk', 'Likelihood', 'Impact', 'Severity', 'Status'])
     if not risk_df.empty:
         fig_risks = px.scatter(risk_df, x='Likelihood', y='Impact', size='Severity', color='Status', hover_name='Risk', title="Risk Likelihood vs Impact")
         st.plotly_chart(fig_risks, use_container_width=True)
@@ -472,7 +606,7 @@ def risk_management():
 def cost_management():
     st.title("Cost Management")
 
-    project_names = st.session_state['projects']['Project Name'].tolist()
+    project_names = [project[1] for project in session.execute(projects_table.select()).fetchall()]
     selected_project_name = st.selectbox("Select Project Name", project_names)
     
     with st.form("add_cost_form"):
@@ -483,11 +617,19 @@ def cost_management():
         status = st.selectbox("Status", ["On Track", "Over Budget", "Under Budget"])
         submitted = st.form_submit_button("Add Cost Entry")
         if submitted:
-            st.session_state['costs'].append({'Project Name': selected_project_name, 'Category': category, 'Planned Cost': planned_cost, 'Actual Cost': actual_cost, 'Status': status})
+            new_cost = {
+                'project_name': selected_project_name,
+                'category': category,
+                'planned_cost': planned_cost,
+                'actual_cost': actual_cost,
+                'status': status
+            }
+            session.execute(costs_table.insert().values(new_cost))
+            session.commit()
             st.success("Cost entry added successfully!")
 
-    cost_df = pd.DataFrame(st.session_state['costs'])
-    cost_df = cost_df[cost_df['Project Name'] == selected_project_name]
+    costs = session.execute(costs_table.select().where(costs_table.c.project_name == selected_project_name)).fetchall()
+    cost_df = pd.DataFrame(costs, columns=['id', 'Project Name', 'Category', 'Planned Cost', 'Actual Cost', 'Status'])
     if not cost_df.empty:
         fig_costs = px.bar(cost_df, x='Category', y=['Planned Cost', 'Actual Cost'], barmode='group', title="Planned vs Actual Costs")
         st.plotly_chart(fig_costs, use_container_width=True)
@@ -509,7 +651,7 @@ def cost_management():
 def todo_list():
     st.title("To-Do List")
 
-    project_names = st.session_state['projects']['Project Name'].tolist()
+    project_names = [project[1] for project in session.execute(projects_table.select()).fetchall()]
     selected_project_name = st.selectbox("Select Project Name", project_names)
     
     with st.form("add_todo_form"):
@@ -520,11 +662,19 @@ def todo_list():
         due_date = st.date_input("Due Date")
         submitted = st.form_submit_button("Add To-Do Item")
         if submitted:
-            st.session_state['todos'].append({'Project Name': selected_project_name, 'Task': task, 'Priority': priority, 'Status': status, 'Due Date': due_date})
+            new_todo = {
+                'project_name': selected_project_name,
+                'task': task,
+                'priority': priority,
+                'status': status,
+                'due_date': due_date
+            }
+            session.execute(todos_table.insert().values(new_todo))
+            session.commit()
             st.success("To-Do item added successfully!")
 
-    todo_df = pd.DataFrame(st.session_state['todos'])
-    todo_df = todo_df[todo_df['Project Name'] == selected_project_name]
+    todos = session.execute(todos_table.select().where(todos_table.c.project_name == selected_project_name)).fetchall()
+    todo_df = pd.DataFrame(todos, columns=['id', 'Project Name', 'Task', 'Priority', 'Status', 'Due Date'])
     if not todo_df.empty:
         st.subheader("To-Do List")
         st.dataframe(todo_df)
@@ -543,12 +693,13 @@ def todo_list():
 def portfolio_tracking():
     st.title("Portfolio Tracking")
 
-    portfolio_df = st.session_state['projects']
+    portfolios = session.execute(portfolio_table.select()).fetchall()
+    portfolio_df = pd.DataFrame(portfolios, columns=['id', 'Project Name', 'Portfolio Type'])
     if not portfolio_df.empty:
-        fig_portfolio = px.pie(portfolio_df, names='Portfolio', title="Portfolio Distribution")
+        fig_portfolio = px.pie(portfolio_df, names='Portfolio Type', title="Portfolio Distribution")
         st.plotly_chart(fig_portfolio, use_container_width=True)
 
-        fig_portfolio_timeline = px.timeline(portfolio_df, x_start="Start Date", x_end="End Date", y="Project Name", color="Portfolio", title="Project Portfolio Timeline")
+        fig_portfolio_timeline = px.timeline(portfolio_df, x_start="Start Date", x_end="End Date", y="Project Name", color="Portfolio Type", title="Project Portfolio Timeline")
         st.plotly_chart(fig_portfolio_timeline, use_container_width=True)
 
         st.subheader("Portfolio Data")
@@ -565,7 +716,7 @@ def portfolio_tracking():
 def project_calendar():
     st.title("Project Calendar")
 
-    project_names = st.session_state['projects']['Project Name'].tolist()
+    project_names = [project[1] for project in session.execute(projects_table.select()).fetchall()]
     selected_project_name = st.selectbox("Select Project Name", project_names)
     
     with st.form("add_calendar_form"):
@@ -574,11 +725,17 @@ def project_calendar():
         event_date = st.date_input("Event Date")
         submitted = st.form_submit_button("Add Calendar Entry")
         if submitted:
-            st.session_state['calendar'].append({'Project Name': selected_project_name, 'Event Name': event_name, 'Event Date': event_date})
+            new_calendar_entry = {
+                'project_name': selected_project_name,
+                'event_name': event_name,
+                'event_date': event_date
+            }
+            session.execute(calendar_table.insert().values(new_calendar_entry))
+            session.commit()
             st.success("Calendar entry added successfully!")
 
-    calendar_df = pd.DataFrame(st.session_state['calendar'])
-    calendar_df = calendar_df[calendar_df['Project Name'] == selected_project_name]
+    calendar_entries = session.execute(calendar_table.select().where(calendar_table.c.project_name == selected_project_name)).fetchall()
+    calendar_df = pd.DataFrame(calendar_entries, columns=['id', 'Project Name', 'Event Name', 'Event Date'])
     if not calendar_df.empty:
         st.subheader("Project Calendar")
         st.dataframe(calendar_df)
@@ -597,7 +754,7 @@ def project_calendar():
 def task_management():
     st.title("Task Management")
 
-    project_names = st.session_state['projects']['Project Name'].tolist()
+    project_names = [project[1] for project in session.execute(projects_table.select()).fetchall()]
     selected_project_name = st.selectbox("Select Project Name", project_names)
     
     with st.form("add_task_form"):
@@ -609,11 +766,20 @@ def task_management():
         end_date = st.date_input("End Date")
         submitted = st.form_submit_button("Add Task")
         if submitted:
-            st.session_state['tasks'].append({'Project Name': selected_project_name, 'Task': task, 'Priority': priority, 'Status': status, 'Start Date': start_date, 'End Date': end_date})
+            new_task = {
+                'project_name': selected_project_name,
+                'task': task,
+                'priority': priority,
+                'status': status,
+                'start_date': start_date,
+                'end_date': end_date
+            }
+            session.execute(tasks_table.insert().values(new_task))
+            session.commit()
             st.success("Task added successfully!")
 
-    task_df = pd.DataFrame(st.session_state['tasks'])
-    task_df = task_df[task_df['Project Name'] == selected_project_name]
+    tasks = session.execute(tasks_table.select().where(tasks_table.c.project_name == selected_project_name)).fetchall()
+    task_df = pd.DataFrame(tasks, columns=['id', 'Project Name', 'Task', 'Priority', 'Status', 'Start Date', 'End Date'])
     if not task_df.empty:
         st.subheader("Task Data")
         st.dataframe(task_df)
@@ -632,13 +798,13 @@ def task_management():
 def gantt_chart():
     st.title("Gantt Chart")
 
-    project_names = st.session_state['projects']['Project Name'].tolist()
+    project_names = [project[1] for project in session.execute(projects_table.select()).fetchall()]
     selected_project_name = st.selectbox("Select Project Name", project_names)
 
     gantt_color = st.color_picker("Pick a Gantt Chart Bar Color", "#1f77b4")
 
-    task_df = pd.DataFrame(st.session_state['tasks'])
-    task_df = task_df[task_df['Project Name'] == selected_project_name]
+    tasks = session.execute(tasks_table.select().where(tasks_table.c.project_name == selected_project_name)).fetchall()
+    task_df = pd.DataFrame(tasks, columns=['id', 'Project Name', 'Task', 'Priority', 'Status', 'Start Date', 'End Date'])
     if not task_df.empty:
         fig_gantt = px.timeline(task_df, x_start="Start Date", x_end="End Date", y="Task", color="Priority", title="Gantt Chart")
         fig_gantt.update_traces(marker_color=gantt_color)
@@ -655,7 +821,7 @@ def gantt_chart():
 def cost_estimation():
     st.title("Cost Estimation")
 
-    project_names = st.session_state['projects']['Project Name'].tolist()
+    project_names = [project[1] for project in session.execute(projects_table.select()).fetchall()]
     selected_project_name = st.selectbox("Select Project Name", project_names)
     
     with st.form("add_cost_estimation_form"):
@@ -664,11 +830,17 @@ def cost_estimation():
         estimated_cost = st.number_input("Estimated Cost", min_value=0)
         submitted = st.form_submit_button("Add Cost Estimation")
         if submitted:
-            st.session_state['cost_estimations'].append({'Project Name': selected_project_name, 'Item': item, 'Estimated Cost': estimated_cost})
+            new_cost_estimation = {
+                'project_name': selected_project_name,
+                'item': item,
+                'estimated_cost': estimated_cost
+            }
+            session.execute(cost_estimations_table.insert().values(new_cost_estimation))
+            session.commit()
             st.success("Cost estimation added successfully!")
 
-    cost_estimations_df = pd.DataFrame(st.session_state['cost_estimations'])
-    cost_estimations_df = cost_estimations_df[cost_estimations_df['Project Name'] == selected_project_name]
+    cost_estimations = session.execute(cost_estimations_table.select().where(cost_estimations_table.c.project_name == selected_project_name)).fetchall()
+    cost_estimations_df = pd.DataFrame(cost_estimations, columns=['id', 'Project Name', 'Item', 'Estimated Cost'])
     if not cost_estimations_df.empty:
         st.subheader("Cost Estimations")
         st.dataframe(cost_estimations_df)
@@ -963,10 +1135,19 @@ def training_and_development():
         status = st.selectbox("Status", ["Planned", "In Progress", "Completed"])
         submitted = st.form_submit_button("Add Training Program")
         if submitted:
-            st.session_state['training'].append({'Program Name': program_name, 'Trainer': trainer, 'Start Date': start_date, 'End Date': end_date, 'Status': status})
+            new_training = {
+                'program_name': program_name,
+                'trainer': trainer,
+                'start_date': start_date,
+                'end_date': end_date,
+                'status': status
+            }
+            session.execute(training_table.insert().values(new_training))
+            session.commit()
             st.success("Training program added successfully!")
 
-    training_df = pd.DataFrame(st.session_state['training'])
+    training = session.execute(training_table.select()).fetchall()
+    training_df = pd.DataFrame(training, columns=['id', 'Program Name', 'Trainer', 'Start Date', 'End Date', 'Status'])
     if not training_df.empty:
         st.subheader("Training Programs Data")
         st.dataframe(training_df)
@@ -985,7 +1166,8 @@ def training_and_development():
 def visualizations():
     st.title("Visualizations")
 
-    project_df = st.session_state['projects']
+    project_df = session.execute(projects_table.select()).fetchall()
+    project_df = pd.DataFrame(project_df, columns=['id', 'Project Name', 'Start Date', 'End Date', 'Budget', 'Spent', 'Status', 'Portfolio', 'Impact on Business', 'Deliverable', 'Timeline'])
     if not project_df.empty:
         project_df['Start Date'] = pd.to_datetime(project_df['Start Date'])
         project_df['End Date'] = pd.to_datetime(project_df['End Date'])
